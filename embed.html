@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador do Índice de Perdas de Água</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        @charset "UTF-8";
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .slider {
+            width: 460px;
+            margin-left: 10px;
+        }
+        
+        h1 {
+            padding: 20px;
+            font-size: large;
+            font-weight: 700;
+        }
+        
+        #consumidoValue {
+            margin-top: -32px;
+        }
+        
+        #produzidoValue {
+            margin-top: -32px;
+        }
+        /* ==================== ↓↓↓ NOT RELATED TO DEMO ↓↓↓ ==================== */
+        
+        #wwrap {
+            pointer-events: none;
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            position: fixed;
+            inset: 0;
+            z-index: 9;
+        }
+        
+        html.up #wwrap {
+            flex-direction: column;
+        }
+        
+        #wwrap [class*=warn--] {
+            box-sizing: border-box;
+            position: relative;
+            margin: 0.5em 0;
+            padding: 1em 0.5em 0.5em;
+            width: calc(100% - 2em);
+            border-radius: 5px;
+            box-shadow: 0 0 5px dimgrey;
+            background: orangered;
+            color: #fff;
+            font: 1.25rem arial, sans-serif;
+            transition: transform 0.3s cubic-bezier(0.65, -0.29, 0.73, 0.05);
+            pointer-events: auto;
+        }
+        
+        #wwrap [class*=warn--].hidden {
+            transform: scale(0);
+        }
+        
+        #wwrap .warn__close {
+            position: absolute;
+            border: none;
+            background: none;
+            top: 0.25em;
+            right: 0.25em;
+            min-width: 3.5em;
+            transition: 0.3s;
+            color: #fff;
+            font-size: 0.75em;
+            text-indent: 0;
+            cursor: pointer;
+        }
+        
+        #wwrap .warn__close:focus {
+            outline: none;
+        }
+        
+        #wwrap .warn__close:focus,
+        #wwrap .warn__close:hover {
+            color: #fff;
+        }
+        
+        #wwrap .warn__close:active {
+            transform: translatey(2px) scale(0.9);
+            color: crimson;
+        }
+        /* ==================== ↑↑↑ NOT RELATED TO DEMO ↑↑↑ ==================== */
+        
+        * {
+            margin: 0;
+            padding: 0;
+            font: inherit;
+        }
+        
+        form,
+        datalist {
+            display: grid;
+        }
+        
+        body {
+            overflow-x: hidden;
+            min-height: 100vh;
+            background: linear-gradient(#f8f8f8, #d9d9d9);
+            font: 1em/1.25 ubuntu, trebuchet ms, verdana;
+        }
+        
+        @media (max-width: 240px) {
+            body {
+                font-size: 0.75em;
+            }
+        }
+        
+        form {
+            --k: calc((var(--val) - var(--min))/ (var(--max) - var(--min)));
+            --pos: calc(1.125em + var(--k)*(100% - 2.25em));
+            grid-gap: 0.25em;
+            place-self: center;
+            min-width: 8em;
+            width: calc(100% - 1.5em);
+            filter: Saturate(var(--hl, 0));
+            transition: filter 0.3s ease-out;
+        }
+        
+        form:focus-within,
+        form:hover {
+            --hl: 1;
+        }
+        
+        input[type=range] {
+            height: 2.25em;
+            border-radius: 2.25em;
+            box-shadow: 0 -1px #eaeaea, 0 1px #fff;
+            background: linear-gradient(#c3c3c3, #f1f1f1);
+            cursor: pointer;
+        }
+        
+        input[type=range],
+        input[type=range]::-webkit-slider-runnable-track,
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+        }
+        
+        input[type=range][list]::-webkit-slider-container {
+            min-height: 1.5em;
+        }
+        
+        input[type=range]::-webkit-slider-container {
+            -webkit-user-modify: read-write !important;
+            margin: 0.375em;
+            height: 1.5em;
+            border-radius: 0.75em;
+            box-shadow: inset 0 1px 4px #8c8c8c;
+            background: linear-gradient(#f8dd36, #d68706) 0/var(--pos) no-repeat, linear-gradient(#efefef, #c9c9c9);
+        }
+        
+        input[type=range]::-webkit-slider-runnable-track {
+            margin: -0.375em;
+        }
+        
+        input[type=range]::-moz-range-track {
+            margin: 0.375em;
+            height: 1.5em;
+            border-radius: 0.75em;
+            box-shadow: inset 0 1px 4px #8c8c8c;
+            background: linear-gradient(#f8dd36, #d68706) 0/var(--pos) no-repeat, linear-gradient(#efefef, #c9c9c9);
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            box-sizing: border-box;
+            border: solid 0.375em transparent;
+            width: 2.25em;
+            height: 2.25em;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px #7d7d7d;
+            background: linear-gradient(#c5c5c5, whitesmoke) padding-box, linear-gradient(#fbfbfb, #c2c2c2) border-box;
+            cursor: ew-resize;
+        }
+        
+        input[type=range]::-moz-range-thumb {
+            box-sizing: border-box;
+            border: solid 0.375em transparent;
+            width: 2.25em;
+            height: 2.25em;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px #7d7d7d;
+            background: linear-gradient(#c5c5c5, whitesmoke) padding-box, linear-gradient(#fbfbfb, #c2c2c2) border-box;
+            cursor: ew-resize;
+        }
+        
+        input[type=range]:focus {
+            outline: none;
+        }
+        
+        datalist {
+            grid-row: 1;
+            grid-template-columns: 27em 1fr 25em;
+            place-content: end center;
+            margin: 0 -0.375em;
+            color: #bababa;
+            text-align: center;
+            text-transform: uppercase;
+        }
+        
+        datalist::after {
+            place-self: end center;
+            margin-bottom: 3px;
+            width: min(12em, 100%);
+            min-height: 0.5em;
+            grid-area: 1/2;
+            background: linear-gradient(90deg, transparent 2px, #f0ba22 0) -1px/1em round;
+            clip-path: polygon(0 calc(100% - 1px), 0 100%, 100% 100%, 100% 0);
+            content: "";
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Índice de Perdas de Água</h1>
+    <form style="--min: 10000; --max: 20000; --val: 0">
+        <div class="container">
+            <div class="slider-container">
+                <label for="volumeConsumido">Volume Consumido (x 1 000 m³):</label>
+                <input type="range" min="10000" max="20000" value="13500" class="slider" id="volumeConsumido" list="l">
+                <datalist id="l">
+                <option label="min" value="0">
+                </option><option label="max" value="100">
+              </option></datalist>
+                <span id="consumidoValue">13500</span>
+            </div>
+    </form>
+    <form style="--min: 15000; --max: 30000; --val: 0"></form>
+    <div class="slider-container">
+        <label for="volumeProduzido">Volume Produzido (x 1 000 m³):</label>
+        <input type="range" min="15000" max="30000" value="20000" class="slider" id="volumeProduzido" list="l">
+        <datalist id="l">
+                <option label="min" value="0">
+                </option><option label="max" value="100">
+              </option></datalist>
+        <span id="produzidoValue">20000</span>
+    </div>
+    </div>
+    </form>
+    <div id="gauge" style="width:450px; height:300px;"></div>
+</body>
+<script>
+    function calcularIndice(volumeConsumido, volumeProduzido) {
+        // Código antigo e funcional
+        // return ((volumeProduzido - volumeConsumido) / volumeProduzido) * 100;
+
+        const baseIndice = 27.742249;
+        const incrementoPor1000VolumeConsumido = -4.50982088e-6;
+        const incrementoPor1000VolumeProduzido = 3.34325927e-6;
+
+        const incrementoConsumido = (volumeConsumido) * incrementoPor1000VolumeConsumido * 1000;
+        const incrementoProduzido = (volumeProduzido) * incrementoPor1000VolumeProduzido * 1000;
+
+        const indice = baseIndice + incrementoConsumido + incrementoProduzido;
+        return indice;
+    }
+
+    function atualizarValores() {
+        const volumeConsumido = document.getElementById('volumeConsumido').value;
+        const volumeProduzido = document.getElementById('volumeProduzido').value;
+
+        document.getElementById('consumidoValue').textContent = volumeConsumido;
+        document.getElementById('produzidoValue').textContent = volumeProduzido;
+
+        const indice = calcularIndice(volumeConsumido, volumeProduzido);
+        atualizarGauge(indice);
+    }
+
+    function atualizarGauge(indice) {
+        let corIndicador;
+
+        if (indice <= 15) {
+            corIndicador = '#00bded';
+        } else if (indice <= 30) {
+            corIndicador = '#00a300';
+        } else if (indice <= 50) {
+            corIndicador = '#ffd349';
+        } else if (indice <= 75) {
+            corIndicador = '#ff0000';
+        } else {
+            corIndicador = '#990000';
+        }
+
+        const gaugeData = {
+            domain: {
+                x: [0, 1],
+                y: [0, 1]
+            },
+            value: indice,
+            title: {
+                text: 'Índice de Perdas de Água (%)'
+            },
+            gauge: {
+                axis: {
+                    range: [0, 100]
+                },
+                bar: {
+                    color: corIndicador
+                },
+                bgcolor: 'transparent',
+                borderwidth: 2,
+                bordercolor: 'rgba(58, 71, 80, 0.9)'
+            },
+            type: 'indicator',
+            mode: 'gauge+number'
+        };
+
+        Plotly.newPlot('gauge', [gaugeData]);
+
+        let svgElement = document.querySelector('.main-svg');
+        if (svgElement) {
+            svgElement.style.background = 'transparent';
+        }
+    }
+
+
+    document.getElementById('volumeConsumido').addEventListener('input', atualizarValores);
+    document.getElementById('volumeProduzido').addEventListener('input', atualizarValores);
+
+    atualizarValores();
+
+    /* external resources *only* for displaying the info boxes */
+
+    /* this below is all the JS needed for the demo itself to work */
+    document.documentElement.classList.add('js');
+
+    addEventListener('input', e => {
+        let _t = e.target;
+
+        _t.parentNode.style.setProperty('--val', +_t.value)
+    }, false);
+
+    window.onload = function() {
+        let svgElement = document.querySelector('.main-svg');
+        if (svgElement) {
+            svgElement.style.background = 'transparent';
+        }
+    };
+</script>
+
+</html>
